@@ -23,7 +23,17 @@ namespace TaskManager.API.Controllers
             try
             {
                 var todos = await _todoRepository.GetAllAsync();
-                return Ok(todos);
+
+                var todoDtos = todos.Select(todo => new TodoItemDto
+                {
+                    Id = todo.Id,
+                    Title = todo.Title,
+                    Description = todo.Description,
+                    IsCompleted = todo.IsCompleted,
+                    CreateDate = todo.CreateDate
+                }).ToList();
+
+                return Ok(todoDtos);
             }
             catch (Exception ex)
             {
@@ -42,7 +52,17 @@ namespace TaskManager.API.Controllers
                 {
                     return NotFound();
                 }
-                return Ok(todo);
+
+                var todoDto = new TodoItemDto
+                {
+                    Id = todo.Id,
+                    Title = todo.Title,
+                    Description = todo.Description,
+                    IsCompleted = todo.IsCompleted,
+                    CreateDate = todo.CreateDate
+                };
+
+                return Ok(todoDto);
             }
             catch (Exception ex)
             {
@@ -52,16 +72,30 @@ namespace TaskManager.API.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> Create([FromBody] TodoItem todoItem)
+        public async Task<IActionResult> Create([FromBody] TodoItemDto? todoItemDto)
         {
             try
             {
+                if (todoItemDto == null)
+                {
+                    return BadRequest("Todo item cannot be null.");
+                }
+
                 if (!ModelState.IsValid)
                 {
                     return BadRequest(ModelState);
                 }
-                await _todoRepository.AddAsync(todoItem);
-                    return CreatedAtAction(nameof(GetById), new { id = todoItem.Id }, todoItem);
+
+                var todo = new TodoItem
+                {
+                    Title = todoItemDto.Title,
+                    Description = todoItemDto.Description,
+                    IsCompleted = todoItemDto.IsCompleted,
+                    CreateDate = DateTime.UtcNow
+                };
+
+                await _todoRepository.AddAsync(todo);
+                    return CreatedAtAction(nameof(GetById), new { id = todo.Id }, todoItemDto);
             }
             catch (Exception ex)
             {
@@ -71,13 +105,13 @@ namespace TaskManager.API.Controllers
         }
 
         [HttpPut("{id}")]
-        public async Task<IActionResult> Update(int id, [FromBody] TodoItem todoItem)
+        public async Task<IActionResult> Update(int id, [FromBody] TodoItemDto todoItemDto)
         {
             try
             {
-                if (id != todoItem.Id || !ModelState.IsValid)
+                if (id != todoItemDto.Id || !ModelState.IsValid)
                 {
-                    return BadRequest("Invalid todo item.");
+                    return BadRequest(ModelState);
                 }
                 var existingTodo = await _todoRepository.GetByIdAsync(id);
                 if (existingTodo == null)
@@ -85,9 +119,9 @@ namespace TaskManager.API.Controllers
                     return NotFound();
                 }
                 
-                existingTodo.Description = todoItem.Description;
-                existingTodo.Title = todoItem.Title;
-                existingTodo.IsCompleted = todoItem.IsCompleted;
+                existingTodo.Description = todoItemDto.Description;
+                existingTodo.Title = todoItemDto.Title;
+                existingTodo.IsCompleted = todoItemDto.IsCompleted;
 
                 await _todoRepository.UpdateAsync(existingTodo);
                 return NoContent();
@@ -109,6 +143,7 @@ namespace TaskManager.API.Controllers
                 {
                     return NotFound();
                 }
+
                 await _todoRepository.DeleteAsync(id);
                 return NoContent();
             }
