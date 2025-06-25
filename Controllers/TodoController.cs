@@ -9,66 +9,114 @@ namespace TaskManager.API.Controllers
     public class TodoController : ControllerBase
     {
         private readonly ITodoRepository _todoRepository;
-        public TodoController(ITodoRepository todoRepository)
+        private readonly ILogger<TodoController> _logger;
+        
+        public TodoController(ITodoRepository todoRepository, ILogger<TodoController> logger)
         {
             _todoRepository = todoRepository;
+            _logger = logger;
         }
 
         [HttpGet]
         public async Task<IActionResult> GetAll()
         {
-            var todos = await _todoRepository.GetAllAsync();
-            return Ok(todos);
+            try
+            {
+                var todos = await _todoRepository.GetAllAsync();
+                return Ok(todos);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "An error occurred while fetching todo items.");
+                return StatusCode(500, "Internal server error");
+            }
         }
 
         [HttpGet("{id}")]
         public async Task<IActionResult> GetById(int id)
         {
-            var todo = await _todoRepository.GetByIdAsync(id);
-            if (todo == null)
+            try
             {
-                return NotFound();
+                var todo = await _todoRepository.GetByIdAsync(id);
+                if (todo == null)
+                {
+                    return NotFound();
+                }
+                return Ok(todo);
             }
-            return Ok(todo);
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "An error occurred while fetching the todo item with ID {Id}.", id);
+                return StatusCode(500, "Internal server error");
+            }
         }
 
         [HttpPost]
         public async Task<IActionResult> Create([FromBody] TodoItem todoItem)
         {
-            if (!ModelState.IsValid)
+            try
             {
-                return BadRequest("Invalid todo item.");
+                if (!ModelState.IsValid)
+                {
+                    return BadRequest(ModelState);
+                }
+                await _todoRepository.AddAsync(todoItem);
+                    return CreatedAtAction(nameof(GetById), new { id = todoItem.Id }, todoItem);
             }
-            await _todoRepository.AddAsync(todoItem);
-            return CreatedAtAction(nameof(GetById), new { id = todoItem.Id }, todoItem);
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "An error occurred while creating a new todo item.");
+                return StatusCode(500, "Internal server error");
+            }
         }
 
         [HttpPut("{id}")]
         public async Task<IActionResult> Update(int id, [FromBody] TodoItem todoItem)
         {
-            if (id != todoItem.Id || !ModelState.IsValid)
+            try
             {
-                return BadRequest("Invalid todo item.");
+                if (id != todoItem.Id || !ModelState.IsValid)
+                {
+                    return BadRequest("Invalid todo item.");
+                }
+                var existingTodo = await _todoRepository.GetByIdAsync(id);
+                if (existingTodo == null)
+                {
+                    return NotFound();
+                }
+                
+                existingTodo.Description = todoItem.Description;
+                existingTodo.Title = todoItem.Title;
+                existingTodo.IsCompleted = todoItem.IsCompleted;
+
+                await _todoRepository.UpdateAsync(existingTodo);
+                return NoContent();
             }
-            var existingTodo = await _todoRepository.GetByIdAsync(id);
-            if (existingTodo == null)
+            catch (Exception ex)
             {
-                return NotFound();
+                _logger.LogError(ex, "An error occurred while updating the todo item with ID {Id}.", id);
+                return StatusCode(500, "Internal server error");
             }
-            await _todoRepository.UpdateAsync(todoItem);
-            return NoContent();
         }
 
         [HttpDelete("{id}")]
         public async Task<IActionResult> Delete(int id)
         {
-            var existingTodo = await _todoRepository.GetByIdAsync(id);
-            if (existingTodo == null)
+            try
             {
-                return NotFound();
+                var existingTodo = await _todoRepository.GetByIdAsync(id);
+                if (existingTodo == null)
+                {
+                    return NotFound();
+                }
+                await _todoRepository.DeleteAsync(id);
+                return NoContent();
             }
-            await _todoRepository.DeleteAsync(id);
-            return NoContent();
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "An error occurred while deleting the todo item with ID {Id}.", id);
+                return StatusCode(500, "Internal server error");
+            }
         }
     }
 }
