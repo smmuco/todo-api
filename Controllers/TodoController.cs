@@ -150,7 +150,7 @@ namespace TaskManager.API.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "An error occurred while deleting the todo item with ID {Id}.", id);
-                return StatusCode(500, "Internal server error");
+                return StatusCode(500, "Internal server error"); 
             }
         }
     }
