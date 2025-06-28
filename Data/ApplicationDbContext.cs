@@ -9,5 +9,6 @@ namespace TaskManager.API.Data
         {
         }
         public DbSet<Models.TodoItem> TodoItems { get; set; }
+        public DbSet<Models.User> Users { get; set; }
     }
 }
