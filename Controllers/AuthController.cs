@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using TaskManager.API.Models;
 using TaskManager.API.Services;
 
 namespace TaskManager.API.Controllers
@@ -29,19 +30,18 @@ namespace TaskManager.API.Controllers
 
         // Login an existing user
         [HttpPost("login")]
-        public async Task<IActionResult> Login(string username, string password)
+        public async Task<IActionResult> Login(LoginDto loginDto)
         {
-            if (string.IsNullOrEmpty(username) || string.IsNullOrEmpty(password))
+            if (string.IsNullOrEmpty(loginDto.Username) || string.IsNullOrEmpty(loginDto.Password))
             {
                 return BadRequest("Username and password are required.");
             }
-            var user = await _authService.LoginAsync(username, password);
-            if (user == null)
+            var token = await _authService.LoginAsync(loginDto.Username, loginDto.Password);
+            if (token == null)
             {
                 return Unauthorized("Invalid credentials.");
             }
-            // Here you would typically generate a JWT token and return it
-            return Ok(new { Message = "Login successful", Username = user.Username });
+            return Ok(new { token });
         }
     }
 }
